@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+    - name: raw
+      database: dtc-de-project-374319
+      schema: ga_data
+      tables:
+        - name: ga_data_raw
+
+models:
+  - name: avg_num_trans
+    description: >
+      Average number of transactions per purchase.
+
+  - name: trans_per_device
+    description: >
+      Identify the top 5 browsers of generated transactions.
+  
+  - name: avg_time_per_country
+    description: >
+      Average time spent by purchaser on a site segmented by country.
+
+  - name: users_per_channel
+    description: >
+      Ration new-to-existing users per marketing channel.
