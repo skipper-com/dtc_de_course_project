@@ -3,7 +3,7 @@
 SELECT
     date,
     country,
-    SUM (timeOnSite) AS total_time_on_page
+    AVG(timeOnSite) AS total_time_on_page
 FROM
     {{ source('raw','ga_data_raw') }}
 WHERE
