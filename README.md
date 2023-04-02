@@ -24,8 +24,7 @@ For the project I choose Google Analytics Sample (https://console.cloud.google.c
 The data includes The data is typical of what an ecommerce website would see and includes the following information:
 - Traffic source data: information about where website visitors originate, including data about organic traffic, paid search traffic, and display traffic
 - Content data: information about the behavior of users on the site, such as URLs of pages that visitors look at, how they interact with content, etc.
-- Transactional data: information about the transactions on the Google Merchandise Store website".
-It's worth noting that dataset is rather small (2500+ records) and quite old, but I hope this will not affected results. 
+- Transactional data: information about the transactions on the Google Merchandise Store website". 
 
 ### Problem
 Analyzing the data superficially (https://support.google.com/analytics/answer/3437719?hl=en), you can notice that the user session data is recorded in quite detail and the marketing department can answer a large number of questions using this dataset.
@@ -60,7 +59,7 @@ To get, process, transform and load data the one DAG in Composer is used. Loadin
 Following code of this task (also in ga_data_transform.py)
 
 ## Data warehouse
-Actually, there is no need to partion and cluster data with 2500+ records, because BigQuery will not work faster. But I decided to add partitions by day and clusters by countries for researching puurpose only.
+I decided to add partitions by date and clusters by countries for researching purpose only. Dates usually X-axis for many tiles on dashboards, country one of the coordinality for my dashboard tile. 
 Usually tables in dataset created once and no need to do it in DAG. But in that project for demonstration I decided to use BigQuery Operator in Composer to create table in DWH (partitioned and cluster). Then using pandas read parquet from bucket and load it to DWH.
 Following code of these two tasks (also in ga_data_transform.py)
 
@@ -70,6 +69,7 @@ Following code of dbt script and task (also in ga_data_transform.py)
 
 ## Dashboard using Looker Studio
 After transformation in DWH using dbt I've got data_mart tables which I used to solve initially identified problems. All tiles I decided to place on the same page with very simple design. This is for clarity and visibility. In real-life project I could spent much more time on design and ergonoics of dashboard (maybe even more than on data pipeline).
+https://lookerstudio.google.com/reporting/0199ddec-d5e2-4e33-9938-2f958fd9add1/page/BdHLD?s=izhgVpIqG4g
 
 ## Reproducibility
 To reproduce my project you'll have to do following steps:

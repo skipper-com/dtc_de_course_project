@@ -53,8 +53,8 @@ with models.DAG(
         
         query = """
                     SELECT
-                        date,
-                        fullVisitorId,
+                        CAST(date AS DATE FORMAT 'YYYYMMDD'),
+                        CAST(fullVisitorId AS STRING),
                         totals.transactions,
                         device.browser,
                         totals.timeOnSite,
@@ -80,15 +80,15 @@ with models.DAG(
                     (
                         date DATE,
                         fullVisitorId STRING,
-                        totals.transactions INTEGER,
-                        device.browser STRING,
-                        totals.timeOnSite INTEGER,
+                        transactions INTEGER,
+                        browser STRING,
+                        timeOnSite INTEGER,
                         channelGrouping STRING,
-                        geoNetwork.country STRING,
-                        totals.newVisits INTEGER,
-                        totals.visits INTEGER
+                        country STRING,
+                        newVisits INTEGER,
+                        visits INTEGER
                     )
-                    CLUSTER BY geoNetwork.country
+                    CLUSTER BY country
                     PARTITION BY date
                 """,
             "useLegacySql": False
@@ -117,7 +117,7 @@ with models.DAG(
 
     dbt_cloud_job_run = DbtCloudRunJobOperator(
         task_id="dbt_cloud_job_run",
-        job_id=65767,
+        job_id=259988,
         check_interval=10,
         timeout=300,
     )
