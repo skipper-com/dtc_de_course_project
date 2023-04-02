@@ -5,7 +5,7 @@ sources:
       database: dtc-de-project-374319
       schema: ga_data
       tables:
-        - name: ga_raw_data
+        - name: ga_data_raw
 
 models:
   - name: avg_num_trans

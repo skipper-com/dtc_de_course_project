@@ -4,10 +4,10 @@ WITH ratio AS(
     SELECT
         date,
         channelGrouping,
-        SUM(totals.newVisits) AS new_visits,
-        SUM(totals.visits) AS visits
+        SUM(newVisits) AS new_visits,
+        SUM(visits) AS visits
     FROM
-        {{ source('raw','ga_raw_data') }}
+        {{ source('raw','ga_data_raw') }}
     GROUP BY
         date,
         channelGrouping
@@ -16,6 +16,9 @@ WITH ratio AS(
 SELECT
     date,
     channelGrouping,
-    ( new_visits / visits ) AS new_existing_ration
+    (SUM(new_visits) / SUM(visits)) AS new_existing_ration
 FROM
     ratio
+GROUP BY
+    date,
+    channelGrouping

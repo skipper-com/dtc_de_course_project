@@ -2,12 +2,12 @@
 
 SELECT
     date,
-    device.browser,
-    SUM ( totals.transactions ) AS total_transactions
+    browser,
+    SUM (transactions) AS total_transactions
 FROM
-    {{ source('raw','ga_raw_data') }}
+    {{ source('raw','ga_data_raw') }}
 GROUP BY
     date,
-    device.browser
+    browser
 ORDER BY
     total_transactions DESC
