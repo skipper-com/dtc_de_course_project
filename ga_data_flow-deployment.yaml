@@ -1,0 +1,46 @@
+###
+### A complete description of a Prefect Deployment for flow 'ga-data-flow'
+###
+name: GA Data Flow
+description: |-
+  General function of DAG orchestrates tasks
+  Args:
+      None.
+
+  Returns:
+      None.
+version: 7b8d193dcc627a402924619af5ff9210
+# The work queue that will handle this deployment's runs
+work_queue_name: default
+work_pool_name: null
+tags: []
+parameters: {}
+schedule: null
+is_schedule_active: null
+infra_overrides: {}
+infrastructure:
+  type: process
+  env: {}
+  labels: {}
+  name: null
+  command: null
+  stream_output: true
+  working_dir: null
+  block_type_slug: process
+  _block_type_slug: process
+
+###
+### DO NOT EDIT BELOW THIS LINE
+###
+flow_name: ga-data-flow
+manifest_path: null
+storage: null
+path: /home/skipper/dtc_de_course_project
+entrypoint: ga_data_pipeline.py:ga_data_flow
+parameter_openapi_schema:
+  title: Parameters
+  type: object
+  properties: {}
+  required: null
+  definitions: null
+timestamp: '2023-04-03T19:09:32.228565+00:00'
