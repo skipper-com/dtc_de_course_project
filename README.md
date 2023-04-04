@@ -19,14 +19,14 @@ In my project, I'd like to consider the issue of obtaining basic information abo
 
 ## Problem description
 ### Dataset
-For the project I choose Google Analytics Sample (https://console.cloud.google.com/marketplace/product/obfuscated-ga360-data/obfuscated-ga360-data?_ga=2.165046975.1820670614.1680343879-1408202468.1646750351&project=bold-azimuth-236219). The Google description of the dataset "The dataset provides 12 months (August 2016 to August 2017) of obfuscated Google Analytics 360 data from the Google Merchandise Store, a real ecommerce store that sells Google-branded merchandise, in BigQuery. It’s a great way analyze business data and learn the benefits of using BigQuery to analyze Analytics 360 data Learn more about the data.
+For the project I choose [Google Analytics Sample](https://console.cloud.google.com/marketplace/product/obfuscated-ga360-data/obfuscated-ga360-data?_ga=2.165046975.1820670614.1680343879-1408202468.1646750351&project=bold-azimuth-236219). The Google description of the dataset "The dataset provides 12 months (August 2016 to August 2017) of obfuscated Google Analytics 360 data from the Google Merchandise Store, a real ecommerce store that sells Google-branded merchandise, in BigQuery. It’s a great way analyze business data and learn the benefits of using BigQuery to analyze Analytics 360 data Learn more about the data.
 The data includes The data is typical of what an ecommerce website would see and includes the following information:
 - Traffic source data: information about where website visitors originate, including data about organic traffic, paid search traffic, and display traffic
 - Content data: information about the behavior of users on the site, such as URLs of pages that visitors look at, how they interact with content, etc.
 - Transactional data: information about the transactions on the Google Merchandise Store website". 
 
 ### Problem
-Analyzing the data superficially (https://support.google.com/analytics/answer/3437719?hl=en), you can notice that the user session data is recorded in quite detail and the marketing department can answer a large number of questions using this dataset.
+Analyzing the data [superficially](https://support.google.com/analytics/answer/3437719?hl=en), you can notice that the user session data is recorded in quite detail and the marketing department can answer a large number of questions using this dataset.
 I'd like to focus on four problems, two of which are proposed to be solved by the GA dataset authors (*italic*), and two of my own (**bolded**). When solving problems, I will try to answer the questions posed with the help of graphs on the dashboard in the most understandable form.
 1. *What is the average number of transactions per purchaser?*
 2. *What is the total number of transactions generated per device browser?*
