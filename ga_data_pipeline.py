@@ -76,9 +76,6 @@ def extract_from_gcs(path) -> pd.DataFrame:
     return df
 
 
-
-
-
 @task(retries=1, log_prints=True)
 def write_to_bq(df: pd.DataFrame) -> None:
     """
@@ -118,7 +115,6 @@ def ga_data_flow():
     df = read_from_bq()
     path = write_to_gcs(df)
     path = f'{GA_STORAGE}/{path}'
-    path = f'{GA_STORAGE}/ga_data.parquet'
     df = extract_from_gcs(path)
     write_to_bq(df)
 
@@ -128,6 +124,7 @@ def ga_data_flow():
         targeted_retries=3,
     )
     return result
+
 
 if __name__ == "__main__":
     ga_data_flow()

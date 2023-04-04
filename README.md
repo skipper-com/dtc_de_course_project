@@ -11,12 +11,11 @@
   - [Transformations with dbt](#transformations-with-dbt)
   - [Dashboard using Looker Studio](#dashboard-using-looker-studio)
   - [Reproducibility](#reproducibility)
-    - [Composer](#composer)
 
 ## Introduction
-*Quite often marketing department needs to evaluate how effective online store and what should be optimized on the site to increase sales. One of the standard tasks of a marketer is to study the statistics of site visits and user behavior on the site.
+*Quite often marketing department needs to evaluate how effective online store and what should be optimized on the site to increase sales. One of the standard tasks for user acqusition manager is to study the statistics of site visits and user behavior on the site.
 Fortunately, some of the world's largest Internet companies are helping to capture user activity on websites and provide site owners access to this information.
-In my project, I'd loike to consider the issue of obtaining basic information about user purchases in the Internet store using the example of a small dataset from Google Analytics.*
+In my project, I'd like to consider the issue of obtaining basic information about user purchases in the Internet store using the example of a dataset from Google Analytics.*
 
 ## Problem description
 ### Dataset
@@ -32,60 +31,209 @@ I'd like to focus on four problems, two of which are proposed to be solved by th
 1. *What is the average number of transactions per purchaser?*
 2. *What is the total number of transactions generated per device browser?*
 3. **What is the average time purchasers spent on site per country?**
-4. **What is new users compare the old ones per channel group**
+4. **What is new users compare the old ones per channel group?**
 
 ## Cloud
-For my project I choose to use Google Cloud Platform (GCP) and dbt cloud tool. I have experience with GCP, AWS and Yandex Cloud and prefered GCP not accidentally. GCP has user-friendly interfaces and a huge set of various tools to build and process data. This project uses only a very small part of the GCP, in reality there are many more tools.
-The project stack consists of VM, Cloud Storage, BigQuery datasets/tables, Composer (Airflow in GCP), Looker Studio and dbt cloud tool. The whole project might localized on VM's or even one VM with installed data tools on it (local file share or S3 storage, local PostgreSQL DB and local PowerBI dashboards) but there are two major disadvantages such approach:
+For my project I chose to use Google Cloud Platform (GCP) and dbt cloud tool. I have experience with GCP, AWS and Yandex Cloud and prefered GCP not accidentally. GCP has user-friendly interfaces and a huge set of various tools to build and process data. This project uses only a very small part of the GCP, in reality there are many more tools.
+The project stack consists of VM, Cloud Storage, BigQuery datasets/tables, prefect, Looker Studio and dbt cloud tool. The whole project might localized on VM's or even one VM with installed data tools on it (local file share or S3 storage, local PostgreSQL DB and local PowerBI dashboards) but there are two major disadvantages such approach:
 - DevOps: time to install, setup, maintain
 - Cost: VM is always running and spent resources 
 Cloud managed tools allows to concetrate attention on data pipelines rather than setuping and provides pay-per-use model.
 
 **Components used in project:**
-1. VM to clone necessary scripts and manifests from repo. Terraform on VM prepares all other components (except dbt cloud tool).
+1. Virtual machine as a main tool to to clone necessary scripts and manifests from repo, terraform bucket and dataset, orchestrate pipeline.
 2. Cloud stoage to store objects (files) in the cloud.
-3. BigQuery to store raw and processed data.
-4. Composer to orchestrate data pipelines and ETL processes[^1].
-5. Looker Studio to publish dashboards
+3. BigQuery dataset to store raw and processed data.
+4. Prefect to orchestrate data pipelines and ETL processes.
+5. Looker Studio to visualize and publish dashboards.
 6. dbt cloud to exceute ETL processes.
-
-[^1]:Google Composer (Airflow)
-Airflow enables you to: orchestrate data pipelines over object stores and data warehouses run workflows that are not data-related create and manage scripted data pipelines as code (Python) Airflow organizes your workflows into DAGs composed of tasks. Airflow (managed cloud version in GCP named '**Composer**') is an easy way to run ETL pipelines quick and reliable. I prefer Airflow over Prefect for lots of guides and materials and also community which supports and develops Airflow.
 
 First of all I've created *terraform* main.tf and variable.tf files to setup environments variables and required resources. Then execute all terraform steps: init, plan, apply - to create storage bucket and BigQuery dataset. 
 
 ## Batch data ingestion
-To get, process, transform and load data the one DAG in Composer is used. Loading batch data separated to task 'ga_data_load' in which pandas method 'read_gbq' is used. This method helps to load data from BigQuery to Pandas dataframe, then dataframe saved to parquet on GCP.
-Following code of this task (also in ga_data_transform.py)
+To get, process, transform and load data the one flow in prefect is used. Loading batch data separated to task 'read_from_bq'. Google Analytics data selected from public dataset to pandas dataframe, then dataframe returns back to flow for next task.
+```python
+def read_from_bq() -> pd.DataFrame:
+    """Task to load data from BQ table to pandas dataframe. 
+        Data gathered by usual SQL query.
+        Data load to cloud stoarge in parquet format.
+        
+        Args:
+            None.
+        
+        Returns:
+            Dataframe.
+    """
+    query = """
+                    SELECT
+                        CAST(date AS DATE FORMAT 'YYYYMMDD') AS date,
+                        CAST(fullVisitorId AS STRING) AS fullVisitorId,
+                        totals.transactions AS transactions,
+                        device.browser AS browser,
+                        totals.timeOnSite AS timeOnSite,
+                        channelGrouping,
+                        geoNetwork.country AS country,
+                        totals.newVisits AS newVisits,
+                        totals.visits AS visits
+                    FROM 
+                        `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+            """
+    return pd.read_gbq(query, project_id = PROJECT)
+```
+
+Next task uploads dataframe to Google Cloud Storage in parquet format.
+
+```python
+def write_to_gcs(df: pd.DataFrame) -> None:
+    """
+        Upload local parquet file to GCS
+        
+        Args:
+            Dataframe and path.
+        
+        Returns:
+            None.
+    
+    """
+
+    gcs_block = GcsBucket.load("dtc-de-gcs")
+    return gcs_block.upload_from_dataframe(df=df, to_path=GA_PARQUET_FILENAME, serialization_format='parquet')
+```
 
 ## Data warehouse
-I decided to add partitions by date and clusters by countries for researching purpose only. Dates usually X-axis for many tiles on dashboards, country one of the coordinality for my dashboard tile. 
-Usually tables in dataset created once and no need to do it in DAG. But in that project for demonstration I decided to use BigQuery Operator in Composer to create table in DWH (partitioned and cluster). Then using pandas read parquet from bucket and load it to DWH.
-Following code of these two tasks (also in ga_data_transform.py)
+I decided to add partitions by date and clusters by countries. Dates usually X-axis for many tiles on dashboards, country one of the coordinality for my dashboard tile. Usually tables in dataset created once and no need to do it in DAG. I created table in dataset using:
+```sql
+    CREATE OR REPLACE TABLE `ga_data.ga_data_raw`
+    (
+        date DATE,
+        fullVisitorId STRING,
+        transactions INTEGER,
+        browser STRING,
+        timeOnSite INTEGER,
+        channelGrouping STRING,
+        country STRING,
+        newVisits INTEGER,
+        visits INTEGER
+    )
+    CLUSTER BY country
+    PARTITION BY date
+```
+
+Then using pandas read parquet from bucket:
+```python
+def extract_from_gcs(path) -> pd.DataFrame:
+    """
+        Download trip data from GCS
+    
+        Args:
+            Dataframe and path.
+        
+        Returns:
+            None.
+    """
+    print(path)
+    df = pd.read_parquet(path)
+    return df
+```
+ and load it to DWH.
+```python
+def write_to_bq(df: pd.DataFrame) -> None:
+    """
+        Write DataFrame to BiqQuery
+
+        Args:
+            Dataframe.
+        
+        Returns:
+            None.
+    """
+
+    df['date'] = pd.to_datetime(df.date, format='%Y-%m-%dT%H:%M:%S.%f', errors='ignore')
+    df['date'] = df.date.dt.date
+    df['fullVisitorId'] = df['fullVisitorId'].astype(str)
+    
+    df.to_gbq(
+        destination_table=f"{DATASET}.{GA_TABLE_RAW}",
+        project_id=PROJECT,
+        credentials=gcp_credentials_block.get_credentials_from_service_account(),
+        chunksize=500_000,
+        if_exists="replace",
+    )
+    return True
+```
+
 
 ## Transformations with dbt
-Cloud dbt transform DWH raw data (aka stage data) to data mart layer in DWH which is used to compile dashboard on next step. dbt scripts (ga_dbt.py) compiled in job inside dbt cloud and executed from DAG
-Following code of dbt script and task (also in ga_data_transform.py)
+Cloud dbt job transforms DWH raw data (aka stage data) to data mart layer in DWH which is used to compile dashboard charts on next step. dbt models  (avg_num_trans.sql, avg_time_per_country.sql, trans_per_device.sql, users_per_channel.sql) compiled in job in dbt cloud and executed from flow
+```python
+result = run_dbt_cloud_job(
+        dbt_cloud_job=DbtCloudJob.load("dtc-de-dbt"),
+        targeted_retries=3,
+    )
+```
 
 ## Dashboard using Looker Studio
-After transformation in DWH using dbt I've got data_mart tables which I used to solve initially identified problems. All tiles I decided to place on the same page with very simple design. This is for clarity and visibility. In real-life project I could spent much more time on design and ergonoics of dashboard (maybe even more than on data pipeline).
-https://lookerstudio.google.com/reporting/0199ddec-d5e2-4e33-9938-2f958fd9add1/page/BdHLD?s=izhgVpIqG4g
+After transformation in DWH using dbt I've got mart tables which I used to solve initially identified problems. 
+I created [dashboard](https://lookerstudio.google.com/reporting/0199ddec-d5e2-4e33-9938-2f958fd9add1/page/BdHLD?s=izhgVpIqG4g) with chart|tiles on one page with very simple design. This is for clarity and visibility. In real-life project I could spent much more time on design and ergonoics of dashboard (maybe even more than on data pipeline).
+
 
 ## Reproducibility
 To reproduce my project you'll have to do following steps:
-1. 
-2. 
-3. 
-4. 
-5. 
-6. 
-7. 
-8. f
+1. Prepare VM in GCP Cloud:
+   1. Create VM in Compute service with suitable OS.
+   2. Install git, python, pip, terraform, conda (if you like it) on it.
+   3. Create service account and API json key for it
+   4. Copy json key file to VM and set environment to use it working with GCP
+2. Clone repository from [link](https://github.com/skipper-com/dtc_de_course_project.git)
+3. Terraform components:
+   1. Check GCS bucket name ("ga_storage" in my case), GCP project ("dtc-de-project-374319" in my case), GCP region ("europe-west3" in my case), BigQuery dataset ("ga_data" in my case) in 'variables.tf' file.
+   2. Init, plan and apply terraform scripts
+```python 
+terraform init
+terraform plan
+terraform apply
+```
+4. Install prefect using with necessary modules 
+```
+python pip install -r requirements.txt
+```
+5. Create table in BQ dataset
+```sql
+    CREATE OR REPLACE TABLE `ga_data.ga_data_raw`
+    (
+        date DATE,
+        fullVisitorId STRING,
+        transactions INTEGER,
+        browser STRING,
+        timeOnSite INTEGER,
+        channelGrouping STRING,
+        country STRING,
+        newVisits INTEGER,
+        visits INTEGER
+    )
+    CLUSTER BY country
+    PARTITION BY date
+```
+6. Prepare dbt
+   - Sign in in dbt cloud
+   - init project
+   - create a branch
+   - make a build
+   - setup a job cloud
 
+   - Then setup a job cloud
+7. Setup prefect blocks:
+   - block to connect GCP
+   - block to connect GCS
+   - block to run dbt job
+8. After all preparements just run prefect flow using
+```python
+python ga_data_pipeline.py
+```
 
-
-### Composer
-enable composer API
-create airflow v2 instance
-grant required permissions to service account
-set environment variables
+Also, it's possible to create deployment with command:
+```python
+prefect deployment build ./ga_data_pipeline.py:ga_data_flow -n "GA data flow"
+prefect deployment apply ga_data_flow-deployment.yaml
+```
+9. 5-10 minutes later dbt cloud job creates mart table in BQ dataset. These tables are used to create [dashboard](https://lookerstudio.google.com/reporting/0199ddec-d5e2-4e33-9938-2f958fd9add1/page/BdHLD?s=izhgVpIqG4g) like this. 
